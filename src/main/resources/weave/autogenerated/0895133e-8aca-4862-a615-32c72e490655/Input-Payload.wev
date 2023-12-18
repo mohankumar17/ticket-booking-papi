@@ -1,8 +1,0 @@
-%dw 2.0
-
-type auto_0895133e_8aca_4862_a615_32c72e490655_Input_Payload = {
-  passengerPreferences: Array<{    coachNumber: String,     passengerId: String,     seatNumber: Number,     _?: Any  }>, 
-  status: String, 
-  _?: Any
-}
-

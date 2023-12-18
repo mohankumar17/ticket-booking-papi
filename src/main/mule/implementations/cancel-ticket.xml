@@ -1,20 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="cancel-ticketFlow" doc:id="767d6b08-8f7a-417c-a5a0-8ad2e3972c67">
-	<ee:transform doc:name="Success Response">
+	<http:request method="DELETE" doc:name="Cancel Reservation" doc:id="81416fdb-e5ff-4979-be4f-eea801553056" config-ref="Railway_Reservation_SAPI" path="/reservations/{reservationId}" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
+			<http:headers ><![CDATA[#[{
+	client_id: p('secure::systemAPI.clientId'),
+	client_secret: p('secure::systemAPI.clientSecret')
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[{
+	reservationId: vars.reservationId
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Success Response">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
   message: "Reservation cancelled successfully",
-  reservationId: 100,
-  dateTime: "2023-11-07T10:30:00Z"
+  reservationId: vars.reservationId,
+  dateTime: now() as String{format: "yyyy-MM-dd'T'hh:mm:ss'Z'"}
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>

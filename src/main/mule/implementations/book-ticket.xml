@@ -1,25 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="book-ticketFlow" doc:id="1cfd617b-d896-4269-900c-5e230c0c7b98">
-	<ee:transform doc:name="Success Response">
+	<set-variable value="#[payload.trainId]" doc:name="trainId" doc:id="8d038134-0311-4acd-a049-ee6b9033c432" variableName="trainId"/>
+		<set-variable value="#[payload.travelDate]" doc:name="travelDate" doc:id="2a4fc256-09d9-40ab-9182-26ebc35fc19d" variableName="travelDate"/>
+		<flow-ref doc:name="fetch-train-detailsFlow" doc:id="842aff12-4d7d-40f4-9b95-c515b7d527ad" name="fetch-train-detailsFlow"/>
+		<flow-ref doc:name="calculate-fare-price-subflow" doc:id="97d04dab-f530-4231-a785-81814398d2d2" name="calculate-fare-price-subflow"/>
+		<ee:transform doc:name="passengerDetails" doc:id="2ea897b8-0eb1-48c1-b216-911d0b6eae2b" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="passengerDetails" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.passengerPreferences map {
+	"passengerId": "P" ++ (($$ + 1) as String),
+	"document": $.proof.idDocument,
+	"classType": $.classType
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="create-new-reservation-entry-subflow" doc:id="664946bb-9bcb-4c20-9408-34056e317be3" name="create-new-reservation-entry-subflow"/>
+		<set-variable value="#[payload.reservationId]" doc:name="reservationId" doc:id="08f7e9e4-9aa3-4b4d-9454-9b75868a3d90" variableName="reservationId" />
+		<flow-ref doc:name="upload-identity-document-subflow" doc:id="126aa723-30ee-4d62-9b87-e7c0eb86c6ed" name="upload-identity-document-subflow"/>
+		<ee:transform doc:name="Success Response">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
   message: "Reservation details uploaded successfully",
-  reservationId: 100,
-  travelDate: "2023-12-28",
-  trainId: "TR123",
-  dateTime: "2023-11-07T10:30:00Z"
+  reservationId: vars.reservationId,
+  travelDate: vars.travelDate,
+  trainId: vars.trainId,
+  dateTime: now() as String{format: "yyyy-MM-dd'T'hh:mm:ss'Z'"}
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
 	
 	</flow>
+	<sub-flow name="calculate-fare-price-subflow" doc:id="28e1ee03-b1da-42fa-a9ce-1feaa73c1c87" >
+		<ee:transform doc:name="Calculate Fare Price" doc:id="facd0eca-78cb-4357-b11d-b3571235e7f4" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="totalFare" ><![CDATA[%dw 2.0
+var haltStation = (vars.trainDetailsResponse.haltStations filter ($.stationId == payload.sourceStation))[0]
+var priceDetails = (haltStation.nextStations filter ($.stationId == payload.destinationStation))[0]
+output application/json
+---
+(payload.passengerPreferences reduce ((passenger, tot=0) -> (priceDetails.prices[passenger.classType] as Number) + tot)) as Number]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="create-new-reservation-entry-subflow" doc:id="a8e6fa5e-5ec1-412f-a5a9-0e4f0e021a6a" >
+		<ee:transform doc:name="Create Reservation Request Body" doc:id="6e9a60e1-7ead-4727-b037-55d96c387de8">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"paymentMethod": payload.paymentMethod,
+	"totalFare": vars.totalFare,
+	"trainId": payload.trainId,
+	"passengers": vars.passengerDetails map ($ - 'document')
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Create Reservation" doc:id="5d9d3ea6-22b8-4cf5-bebf-5d92f0fdde05" config-ref="Railway_Reservation_SAPI" path="/reservations" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
+			<http:headers><![CDATA[#[{
+	client_id: p('secure::systemAPI.clientId'),
+	client_secret: p('secure::systemAPI.clientSecret')
+}]]]></http:headers>
+		</http:request>
+	</sub-flow>
+	<sub-flow name="upload-identity-document-subflow" doc:id="ce07dde7-a0a9-4853-a5bf-32cf88ebe4fb" >
+		<foreach doc:name="For Each" doc:id="16762f0d-cb46-4499-b2d0-6060b5caf4a4" collection="#[vars.passengerDetails]">
+			<ee:transform doc:name="Upload Document Request Body" doc:id="41890930-f7a2-4e5c-a425-352805e25fbc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"bucketName": p('secure::passengersPOI_SAPI.storageBucket'),
+	"fileName":  (vars.reservationId as String) ++ "_" ++ (payload.passengerId) ++ ".png",
+	"document": payload.document
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<http:request method="POST" doc:name="Upload Passenger POI Document" doc:id="020ae060-5a3f-4a80-916f-cc8312aa6135" config-ref="Passengers_POI_SAPI" path="/upload" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
+			<http:headers><![CDATA[#[{
+	client_id: p('secure::systemAPI.clientId'),
+	client_secret: p('secure::systemAPI.clientSecret')
+}]]]></http:headers>
+		</http:request>
+		</foreach>
+	</sub-flow>
 </mule>

@@ -10,7 +10,21 @@
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:router config-ref="ticket-booking-papi-config" />
+        <ee:transform doc:name="correlationId and transactionId" doc:id="100b063a-ca0a-453a-be4a-6014cfb1a424" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="correlationId" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.headers.'correlation-id' default correlationId]]></ee:set-variable>
+				<ee:set-variable variableName="transactionId" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.headers.'transaction-id' default uuid()]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<apikit:router config-ref="ticket-booking-papi-config" />
 		<error-handler ref="global-error-handler" />
        
     </flow>

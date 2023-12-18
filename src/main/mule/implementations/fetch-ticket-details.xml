@@ -1,45 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="fetch-ticket-detailsFlow" doc:id="3b45d706-1257-48b2-937e-01fd56110a74">
-	<ee:transform doc:name="Success Response">
+	<flow-ref doc:name="fetch-train-detailsFlow" doc:id="259a643e-07a1-44bb-989d-31499700483d" name="fetch-train-detailsFlow"/>
+		<http:request method="GET" doc:name="Fetch Reservation Details" doc:id="dfa0b8fa-4e06-4048-bb60-95353bd842d1" config-ref="Railway_Reservation_SAPI" path="/reservations/{reservationId}" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
+			<http:headers ><![CDATA[#[{
+	client_id: p('secure::systemAPI.clientId'),
+	client_secret: p('secure::systemAPI.clientSecret')
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[{
+	reservationId: vars.reservationId
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Success Response">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  travelDate: "2023-11-07",
-  trainId: "TR123",
-  trainName: "Express 123",
-  sourceStation: "StationA",
-  destinationStation: "StationD",
-  paymentMethod: "Credit Card",
-  totalFare: 1150.5,
-  status: "Confirmed",
-  passengers: [
-    {
-      passengerId: "P1",
-      name: "John Doe",
-      age: 30,
-      gender: "Male",
-      classType: "General",
-      coachNumber: "C12",
-      seatNumber: 22
-    }, 
-    {
-      passengerId: "P2",
-      name: "Paul Brandon",
-      age: 34,
-      gender: "Male",
-      classType: "2AC",
-      coachNumber: "A5",
-      seatNumber: 7
+  travelDate: payload.travelDate,
+  trainId: vars.trainDetailsResponse.trainId,
+  trainName: vars.trainDetailsResponse.trainName,
+  sourceStation: payload.sourceStation,
+  destinationStation: payload.destinationStation,
+  paymentMethod: payload.paymentMethod,
+  totalFare: payload.totalFare,
+  status: payload.status,
+  passengers: payload.passengers map {
+      passengerId: $.passengerId,
+      name: $.name,
+      age: $.age,
+      gender: $.gender,
+      classType: $.classType,
+      coachNumber: $.coachNumber,
+      seatNumber: $.seatNumber
     }
-  ]
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
