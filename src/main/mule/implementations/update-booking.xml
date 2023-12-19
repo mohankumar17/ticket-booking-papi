@@ -7,22 +7,32 @@
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="update-bookingFlow" doc:id="0895133e-8aca-4862-a615-32c72e490655">
-	<flow-ref doc:name="fetch-ticket-detailsFlow" doc:id="52ec7dd7-b5ec-4fa2-8864-2e4d2703d605" name="fetch-ticket-detailsFlow" target="ticketDetails"/>
+		<flow-ref doc:name="fetch-ticket-detailsFlow" doc:id="52ec7dd7-b5ec-4fa2-8864-2e4d2703d605" name="fetch-ticket-detailsFlow" target="ticketDetails"/>
 		<ee:transform doc:name="Update Request Body" doc:id="d9c68dad-f0e0-4d64-adc1-6b488de826b1" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
 {
+	"travelDate": vars.ticketDetails.travelDate,
+	"sourceStation": vars.ticketDetails.sourceStation,
+	"destinationStation": vars.ticketDetails.destinationStation,
 	"paymentMethod": vars.ticketDetails.paymentMethod,
 	"totalFare": vars.ticketDetails.totalFare,
-	"status": payload.status,
 	"trainId": vars.ticketDetails.trainId,
-	"passengers": payload.passengerPreferences map {
-		"passengerId": $.passengerId,
-		"coachNumber": $.coachNumber,
-		"seatNumber": $.seatNumber,
-		"classType": (vars.ticketDetails.passengers filter((item, ind) -> (item.passengerId == $.passengerId)))[0].classType
+	"status": payload.status,
+	"passengers": payload.passengerPreferences map do{
+		var passenger = (vars.ticketDetails.passengers filter((item, ind) -> (item.passengerId == $.passengerId)))[0]
+		---
+		{
+			"passengerId": $.passengerId,
+			"coachNumber": $.coachNumber,
+			"seatNumber": $.seatNumber,
+			"name": $.name default passenger.name,
+			"age": $.age default passenger.age,
+			"gender": $.gender default passenger.gender,
+			"classType": passenger.classType
+		}	
 	}
 }]]></ee:set-payload>
 			</ee:message>
@@ -44,8 +54,8 @@ output application/json
 {
   message: "Reservation details updated successfully",
   reservationId: vars.reservationId,
-  travelDate: vars.travelDate,
-  trainId: vars.trainId,
+  travelDate: vars.ticketDetails.travelDate,
+  trainId: vars.ticketDetails.trainId,
   dateTime: now() as String{format: "yyyy-MM-dd'T'hh:mm:ss'Z'"}
 }]]></ee:set-payload>
             </ee:message>

@@ -21,6 +21,9 @@ output application/json
 payload.passengerPreferences map {
 	"passengerId": "P" ++ (($$ + 1) as String),
 	"document": $.proof.idDocument,
+	"name": $.name,
+	"age": $.age,
+	"gender": $.gender,
 	"classType": $.classType
 }]]></ee:set-variable>
 			</ee:variables>
@@ -65,6 +68,9 @@ output application/json
 output application/json
 ---
 {
+	"travelDate": payload.travelDate,
+	"sourceStation": payload.sourceStation,
+	"destinationStation": payload.destinationStation,
 	"paymentMethod": payload.paymentMethod,
 	"totalFare": vars.totalFare,
 	"trainId": payload.trainId,

@@ -7,7 +7,6 @@
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<flow name="fetch-ticket-detailsFlow" doc:id="3b45d706-1257-48b2-937e-01fd56110a74">
-	<flow-ref doc:name="fetch-train-detailsFlow" doc:id="259a643e-07a1-44bb-989d-31499700483d" name="fetch-train-detailsFlow"/>
 		<http:request method="GET" doc:name="Fetch Reservation Details" doc:id="dfa0b8fa-4e06-4048-bb60-95353bd842d1" config-ref="Railway_Reservation_SAPI" path="/reservations/{reservationId}" sendCorrelationId="ALWAYS" correlationId="#[vars.correlationId]">
 			<http:headers ><![CDATA[#[{
 	client_id: p('secure::systemAPI.clientId'),
@@ -17,6 +16,8 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 	reservationId: vars.reservationId
 }]]]></http:uri-params>
 		</http:request>
+		<set-variable value="#[payload.trainId]" doc:name="trainId" doc:id="8a408ffd-0c63-438f-8ff6-d82b3e8a27f7" variableName="trainId"/>
+		<flow-ref doc:name="fetch-train-detailsFlow" doc:id="259a643e-07a1-44bb-989d-31499700483d" name="fetch-train-detailsFlow" />
 		<ee:transform doc:name="Success Response">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -24,7 +25,7 @@ output application/json
 ---
 {
   travelDate: payload.travelDate,
-  trainId: vars.trainDetailsResponse.trainId,
+  trainId: vars.trainId,
   trainName: vars.trainDetailsResponse.trainName,
   sourceStation: payload.sourceStation,
   destinationStation: payload.destinationStation,
