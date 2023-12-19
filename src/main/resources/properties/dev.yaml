@@ -1,6 +1,6 @@
 systemAPI:
-  clientId: "781279af1525442fa93dd351ece0c99b"
-  clientSecret: "414Af637020D428588e28Dacb0C8a057"
+  clientId: "![Sz+riMeV0bg7eCMU2rbaBfKZcqCHuikFVFwbi3kgaOaUMHPpgxlHTuilF+GJD2OE]"
+  clientSecret: "![BCytUz3ZaM1cnu6pfunvNcikul4D9krkX878csj8vIKHLBrBpCkyRKyhW6SZhjRN]"
 
 railwayReservation_SAPI:
   host: "railway-reservation-sapi.us-e2.cloudhub.io"
